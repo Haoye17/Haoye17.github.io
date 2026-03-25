@@ -1,78 +1,101 @@
 window.HELP_IMPROVE_VIDEOJS = false;
 
-var INTERP_BASE = "https://homes.cs.washington.edu/~kpar/nerfies/interpolation/stacked";
-var NUM_INTERP_FRAMES = 240;
+function initNavbarBurger() {
+  $(".navbar-burger").on("click", function() {
+    $(".navbar-burger").toggleClass("is-active");
+    $(".navbar-menu").toggleClass("is-active");
+  });
+}
 
-var interp_images = [];
-function preloadInterpolationImages() {
-  for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-    var path = INTERP_BASE + '/' + String(i).padStart(6, '0') + '.jpg';
-    interp_images[i] = new Image();
-    interp_images[i].src = path;
+function initBulmaComponents() {
+  if (typeof bulmaCarousel !== "undefined") {
+    bulmaCarousel.attach(".carousel", {
+      slidesToScroll: 1,
+      slidesToShow: 3,
+      loop: true,
+      infinite: true,
+      autoplay: false,
+      autoplaySpeed: 3000
+    });
+  }
+
+  if (typeof bulmaSlider !== "undefined") {
+    bulmaSlider.attach();
   }
 }
 
-function setInterpolationImage(i) {
-  var image = interp_images[i];
-  image.ondragstart = function() { return false; };
-  image.oncontextmenu = function() { return false; };
-  $('#interpolation-image-wrapper').empty().append(image);
+function bindHorizontalPanel(panel) {
+  var container = panel.querySelector(".js-scroll-container");
+  var thumb = panel.querySelector(".js-scroll-thumb");
+  var leftBtn = panel.querySelector(".js-scroll-left");
+  var rightBtn = panel.querySelector(".js-scroll-right");
+
+  if (!container || !thumb || !leftBtn || !rightBtn) {
+    return;
+  }
+
+  var isDragging = false;
+  var startX = 0;
+  var initialLeft = 0;
+
+  function updateThumb() {
+    var scrollWidth = container.scrollWidth;
+    var clientWidth = container.clientWidth;
+    var currentLeft = container.scrollLeft;
+    var maxScroll = Math.max(1, scrollWidth - clientWidth);
+    var thumbWidth = Math.max(8, (clientWidth / scrollWidth) * 100);
+    var leftPercent = (currentLeft / maxScroll) * (100 - thumbWidth);
+
+    thumb.style.width = thumbWidth + "%";
+    thumb.style.left = leftPercent + "%";
+  }
+
+  function getStep() {
+    var firstCard = panel.querySelector(".video-item");
+    return firstCard ? firstCard.offsetWidth + 20 : 300;
+  }
+
+  container.addEventListener("scroll", updateThumb);
+  window.addEventListener("resize", updateThumb);
+
+  thumb.addEventListener("mousedown", function(e) {
+    isDragging = true;
+    startX = e.pageX;
+    initialLeft = container.scrollLeft;
+  });
+
+  document.addEventListener("mousemove", function(e) {
+    if (!isDragging) {
+      return;
+    }
+    e.preventDefault();
+    var scrollBarWidth = thumb.parentElement.clientWidth;
+    var thumbWidthPx = thumb.clientWidth;
+    var deltaX = e.pageX - startX;
+    var ratio = (container.scrollWidth - container.clientWidth) / Math.max(1, scrollBarWidth - thumbWidthPx);
+    container.scrollLeft = initialLeft + deltaX * ratio;
+  });
+
+  document.addEventListener("mouseup", function() {
+    isDragging = false;
+  });
+
+  leftBtn.addEventListener("click", function() {
+    container.scrollBy({ left: -getStep(), behavior: "smooth" });
+  });
+
+  rightBtn.addEventListener("click", function() {
+    container.scrollBy({ left: getStep(), behavior: "smooth" });
+  });
+
+  updateThumb();
 }
 
-
 $(document).ready(function() {
-    // Check for click events on the navbar burger icon
-    $(".navbar-burger").click(function() {
-      // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
-      $(".navbar-burger").toggleClass("is-active");
-      $(".navbar-menu").toggleClass("is-active");
+  initNavbarBurger();
+  initBulmaComponents();
 
-    });
-
-    var options = {
-			slidesToScroll: 1,
-			slidesToShow: 3,
-			loop: true,
-			infinite: true,
-			autoplay: false,
-			autoplaySpeed: 3000,
-    }
-
-		// Initialize all div with carousel class
-    var carousels = bulmaCarousel.attach('.carousel', options);
-
-    // Loop on each carousel initialized
-    for(var i = 0; i < carousels.length; i++) {
-    	// Add listener to  event
-    	carousels[i].on('before:show', state => {
-    		console.log(state);
-    	});
-    }
-
-    // Access to bulmaCarousel instance of an element
-    var element = document.querySelector('#my-element');
-    if (element && element.bulmaCarousel) {
-    	// bulmaCarousel instance is available as element.bulmaCarousel
-    	element.bulmaCarousel.on('before-show', function(state) {
-    		console.log(state);
-    	});
-    }
-
-    /*var player = document.getElementById('interpolation-video');
-    player.addEventListener('loadedmetadata', function() {
-      $('#interpolation-slider').on('input', function(event) {
-        console.log(this.value, player.duration);
-        player.currentTime = player.duration / 100 * this.value;
-      })
-    }, false);*/
-    preloadInterpolationImages();
-
-    $('#interpolation-slider').on('input', function(event) {
-      setInterpolationImage(this.value);
-    });
-    setInterpolationImage(0);
-    $('#interpolation-slider').prop('max', NUM_INTERP_FRAMES - 1);
-
-    bulmaSlider.attach();
-
-})
+  document.querySelectorAll(".video-section").forEach(function(panel) {
+    bindHorizontalPanel(panel);
+  });
+});
